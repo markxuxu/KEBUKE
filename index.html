@@ -29,6 +29,42 @@
     .total{font-weight:800}
     .sub-option{margin-top:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     @media (max-width:820px){.meta{max-width:50%}.price{text-align:left}}
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    :root {
+  /* 預設根字型大小（會被 JS 覆寫） */
+  font-size: 16px;
+}
+
+/* 容器最大寬度與置中 */
+.wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* 響應式欄位範例 */
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* 小螢幕調整 */
+@media (max-width: 820px) {
+  .meta { max-width: 100%; }
+  .controls { width: 100%; justify-content: flex-start; gap: 8px; }
+  .price { min-width: 70px; text-align: left; }
+}
+
+/* 更小螢幕微調 */
+@media (max-width: 420px) {
+  :root { font-size: 14px; } /* fallback */
+  input[type="number"] { width: 48px; }
+  .qty button { padding: 6px 8px; }
+}
+
   </style>
 </head>
 <body>
@@ -792,6 +828,38 @@
   </div>
 
   <script>
+    // 自動調整 root font-size（responsive scaling）
+(function() {
+  const DESIGN_WIDTH = 1100; // 你的設計稿寬度（px）
+  const BASE_FONT_SIZE = 16; // 設計稿在 DESIGN_WIDTH 時的根字型大小（px）
+  const MIN_FONT = 12;       // 最小字型（px）
+  const MAX_FONT = 20;       // 最大字型（px）
+
+  function setRootFontSize() {
+    const vw = Math.max(document.documentElement.clientWidth || window.innerWidth, 320);
+    // scale = vw / DESIGN_WIDTH; root = BASE_FONT_SIZE * scale
+    let newSize = BASE_FONT_SIZE * (vw / DESIGN_WIDTH);
+    newSize = Math.max(MIN_FONT, Math.min(MAX_FONT, newSize));
+    document.documentElement.style.fontSize = newSize + 'px';
+  }
+
+  // debounce helper
+  function debounce(fn, wait) {
+    let t;
+    return function() {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, arguments), wait);
+    };
+  }
+
+  const onResize = debounce(setRootFontSize, 120);
+
+  // 初始化與事件綁定
+  document.addEventListener('DOMContentLoaded', setRootFontSize);
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+})();
+
     // ====== 配置 ======
     const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwrgYcFM8VzFqCrU2jEdwwHO6rF7zCedFIQelO_CwUm88qraxyi-iKAxXKxsGa1Wdjv/exec'; // <-- 替換為你的 Apps Script exec URL
     const DEFAULT_SHEET_ID = ''; // 可選：若要指定 sheetId，填入
