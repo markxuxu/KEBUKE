@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KEBUKE 點餐 - 線上菜單</title>
+  <style>
+    :root{--accent:#d9534f;--muted:#666;--card:#fff;--bg:#f6f7fb}
+    body{font-family: "Noto Sans TC", Roboto, Arial, sans-serif;background:var(--bg);margin:0;padding:20px}
+    .wrap{max-width:1100px;margin:0 auto;background:var(--card);padding:18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+    h1{margin:0 0 12px;font-size:22px}
+    .controls-row{display:flex;gap:12px;align-items:center;margin-top:12px}
+    .summary{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#fafafa;border-radius:8px;margin-top:12px}
+    .total{font-weight:800}
+    button{background:var(--accent);color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+    button.ghost{background:#efefef;color:#333}
+    details{margin:12px 0;border:1px solid #e6e6e6;border-radius:8px;background:#fff;padding:8px}
+    summary{font-weight:700;cursor:pointer;padding:6px 4px}
+    .item{display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-top:1px dashed #f0f0f0}
+    .item:first-of-type{border-top:0}
+    .meta{max-width:66%}
+    .name{font-weight:700}
+    .desc{color:var(--muted);font-size:13px;margin-top:4px}
+    .price{min-width:110px;text-align:right;font-weight:800}
+    .qty{display:flex;align-items:center;gap:6px;margin-left:12px}
+    input[type="number"]{width:56px;padding:6px;border-radius:6px;border:1px solid #ddd;text-align:center}
+    select{padding:6px;border-radius:6px;border:1px solid #ddd}
+    .note{font-size:13px;color:var(--muted)}
+    .success{color:#0b7a3f;font-weight:700}
+    .error{color:#b02a37;font-weight:700}
+    @media (max-width:820px){.meta{max-width:55%}.price{text-align:left}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>KEBUKE 點餐（示範）</h1>
+    <p class="note">點選每個大項左側的「+」可展開細項。選好後輸入代號並按「送出訂單」。前端以 form-encoded 傳送，避免 CORS preflight。</p>
+
+    <!-- 訂單表單（整個菜單放在此 form） -->
+    <form id="orderForm" onsubmit="return false;">
+      <!-- ========== KEBUKE 推薦（含價格） ========== -->
+      <details open>
+        <summary>推薦（含價格）</summary>
+
+        <!-- 熟成紅茶 + 白玉 — 45 / 50 -->
+        <div class="item" data-id="KB_REC_01" data-price-small="45" data-price-large="50">
+          <!-- meta: 名稱與說明 -->
+          <div class="meta">
+            <div class="name">熟成紅茶 + 白玉</div>
+            <div class="desc">建議：小/大 45 / 50</div>
+          </div>
+          <!-- controls: 大小選擇、價格顯示、數量 -->
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_REC_01" onchange="recalc()">
+              <option value="small">小 NT$45</option>
+              <option value="large">大 NT$50</option>
+            </select>
+            <div class="price" id="price_KB_REC_01">NT$45</div>
+            <div class="qty">
+              <button type="button" class="ghost" onclick="changeQty('KB_REC_01', -1)">-</button>
+              <input type="number" id="qty_KB_REC_01" value="0" min="0" onchange="recalc()">
+              <button type="button" onclick="changeQty('KB_REC_01', 1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 春梅冰茶 + 春梅凍 — 65 / 75（無糖建議） -->
+        <div class="item" data-id="KB_REC_02" data-price-small="65" data-price-large="75">
+          <div class="meta">
+            <div class="name">春梅冰茶 + 春梅凍</div>
+            <div class="desc">建議無糖；小/大 65 / 75</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_REC_02" onchange="recalc()">
+              <option value="small">小 NT$65</option>
+              <option value="large">大 NT$75</option>
+            </select>
+            <div class="price" id="price_KB_REC_02">NT$65</div>
+            <div class="qty">
+              <button type="button" class="ghost" onclick="changeQty('KB_REC_02', -1)">-</button>
+              <input type="number" id="qty_KB_REC_02" value="0" min="0" onchange="recalc()">
+              <button type="button" onclick="changeQty('KB_REC_02', 1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 胭脂多多 + 水玉 — 60 / 70（無糖建議） -->
+        <div class="item" data-id="KB_REC_03" data-price-small="60" data-price-large="70">
+          <div class="meta">
+            <div class="name">胭脂多多 + 水玉</div>
+            <div class="desc">建議無糖；小/大 60 / 70</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_REC_03" onchange="recalc()">
+              <option value="small">小 NT$60</option>
+              <option value="large">大 NT$70</option>
+            </select>
+            <div class="price" id="price_KB_REC_03">NT$60</div>
+            <div class="qty">
+              <button type="button" class="ghost" onclick="changeQty('KB_REC_03', -1)">-</button>
+              <input type="number" id="qty_KB_REC_03" value="0" min="0" onchange="recalc()">
+              <button type="button" onclick="changeQty('KB_REC_03', 1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 半熟烏龍厚乳 + 白玉 — 69 / 79 -->
+        <div class="item" data-id="KB_REC_04" data-price-small="69" data-price-large="79">
+          <div class="meta"><div class="name">半熟烏龍厚乳 + 白玉</div><div class="desc">小/大 69 / 79</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_REC_04" onchange="recalc()">
+              <option value="small">小 NT$69</option>
+              <option value="large">大 NT$79</option>
+            </select>
+            <div class="price" id="price_KB_REC_04">NT$69</div>
+            <div class="qty">
+              <button type="button" class="ghost" onclick="changeQty('KB_REC_04', -1)">-</button>
+              <input type="number" id="qty_KB_REC_04" value="0" min="0" onchange="recalc()">
+              <button type="button" onclick="changeQty('KB_REC_04', 1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 冷露脆梅青 + 檸果寒凍 — 70 / 80（無糖建議） -->
+        <div class="item" data-id="KB_REC_05" data-price-small="70" data-price-large="80">
+          <div class="meta"><div class="name">冷露脆梅青 + 檸果寒凍</div><div class="desc">建議無糖；小/大 70 / 80</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_REC_05" onchange="recalc()">
+              <option value="small">小 NT$70</option>
+              <option value="large">大 NT$80</option>
+            </select>
+            <div class="price" id="price_KB_REC_05">NT$70</div>
+            <div class="qty">
+              <button type="button" class="ghost" onclick="changeQty('KB_REC_05', -1)">-</button>
+              <input type="number" id="qty_KB_REC_05" value="0" min="0" onchange="recalc()">
+              <button type="button" onclick="changeQty('KB_REC_05', 1)">+</button>
+            </div>
+          </div>
+        </div>
+
+      </details>
+
+      <!-- ========== 平飲 好茶 Classic Tea ========== -->
+      <details>
+        <summary>平飲 好茶 Classic Tea</summary>
+
+        <div class="item" data-id="KB_CT_01" data-price-small="35" data-price-large="40">
+          <div class="meta"><div class="name">熟成紅茶</div><div class="desc">小/大 35 / 40</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_CT_01" onchange="recalc()"><option value="small">小 NT$35</option><option value="large">大 NT$40</option></select>
+            <div class="price" id="price_KB_CT_01">NT$35</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_CT_01', -1)">-</button><input type="number" id="qty_KB_CT_01" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_CT_01', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_CT_02" data-price-small="35" data-price-large="40">
+          <div class="meta"><div class="name">霞香紅茶</div><div class="desc">小/大 35 / 40</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_CT_02" onchange="recalc()"><option value="small">小 NT$35</option><option value="large">大 NT$40</option></select>
+            <div class="price" id="price_KB_CT_02">NT$35</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_CT_02', -1)">-</button><input type="number" id="qty_KB_CT_02" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_CT_02', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_CT_03" data-price-small="35" data-price-large="40">
+          <div class="meta"><div class="name">春芽綠茶</div><div class="desc">小/大 35 / 40</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_CT_03" onchange="recalc()"><option value="small">小 NT$35</option><option value="large">大 NT$40</option></select>
+            <div class="price" id="price_KB_CT_03">NT$35</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_CT_03', -1)">-</button><input type="number" id="qty_KB_CT_03" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_CT_03', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_CT_04" data-price-small="35" data-price-large="40">
+          <div class="meta"><div class="name">半熟烏龍</div><div class="desc">小/大 35 / 40</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_CT_04" onchange="recalc()"><option value="small">小 NT$35</option><option value="large">大 NT$40</option></select>
+            <div class="price" id="price_KB_CT_04">NT$35</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_CT_04', -1)">-</button><input type="number" id="qty_KB_CT_04" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_CT_04', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_CT_05" data-price-small="45" data-price-large="50">
+          <div class="meta"><div class="name">熱成紅茶</div><div class="desc">熱飲：45 / 50</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_CT_05" onchange="recalc()"><option value="small">小 NT$45</option><option value="large">大 NT$50</option></select>
+            <div class="price" id="price_KB_CT_05">NT$45</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_CT_05', -1)">-</button><input type="number" id="qty_KB_CT_05" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_CT_05', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_CT_06" data-price-small="45" data-price-large="50">
+          <div class="meta"><div class="name">茶花輕焙烏龍</div><div class="desc">小/大 45 / 50</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_CT_06" onchange="recalc()"><option value="small">小 NT$45</option><option value="large">大 NT$50</option></select>
+            <div class="price" id="price_KB_CT_06">NT$45</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_CT_06', -1)">-</button><input type="number" id="qty_KB_CT_06" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_CT_06', 1)">+</button></div>
+          </div>
+        </div>
+
+      </details>
+
+      <!-- ========== 平飲 手作 Handcrafted Tea ========== -->
+      <details>
+        <summary>平飲 手作 Handcrafted Tea</summary>
+
+        <div class="item" data-id="KB_HT_01" data-price-small="45" data-price-large="50">
+          <div class="meta"><div class="name">熱梅紅茶</div><div class="desc">45 / 50</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_HT_01" onchange="recalc()"><option value="small">小 NT$45</option><option value="large">大 NT$50</option></select>
+            <div class="price" id="price_KB_HT_01">NT$45</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_HT_01', -1)">-</button><input type="number" id="qty_KB_HT_01" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_HT_01', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_HT_02" data-price-small="45" data-price-large="55">
+          <div class="meta"><div class="name">春梅冰茶</div><div class="desc">45 / 55</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_HT_02" onchange="recalc()"><option value="small">小 NT$45</option><option value="large">大 NT$55</option></select>
+            <div class="price" id="price_KB_HT_02">NT$45</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_HT_02', -1)">-</button><input type="number" id="qty_KB_HT_02" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_HT_02', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_HT_03" data-price-small="50" data-price-large="55">
+          <div class="meta"><div class="name">太妃熟成</div><div class="desc">50 / 55（+10 for Extra Shot）</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_HT_03" onchange="recalc()"><option value="small">小 NT$50</option><option value="large">大 NT$55</option></select>
+            <div class="price" id="price_KB_HT_03">NT$50</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_HT_03', -1)">-</button><input type="number" id="qty_KB_HT_03" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_HT_03', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_HT_04" data-price-small="50" data-price-large="60">
+          <div class="meta"><div class="name">胭脂多多</div><div class="desc">50 / 60</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_HT_04" onchange="recalc()"><option value="small">小 NT$50</option><option value="large">大 NT$60</option></select>
+            <div class="price" id="price_KB_HT_04">NT$50</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_HT_04', -1)">-</button><input type="number" id="qty_KB_HT_04" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_HT_04', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_HT_05" data-price-small="50" data-price-large="60">
+          <div class="meta"><div class="name">茶花烏龍多多</div><div class="desc">50 / 60</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_HT_05" onchange="recalc()"><option value="small">小 NT$50</option><option value="large">大 NT$60</option></select>
+            <div class="price" id="price_KB_HT_05">NT$50</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_HT_05', -1)">-</button><input type="number" id="qty_KB_HT_05" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_HT_05', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_HT_06" data-price-small="50" data-price-large="60">
+          <div class="meta"><div class="name">茶花烏龍梅</div><div class="desc">50 / 60</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_HT_06" onchange="recalc()"><option value="small">小 NT$50</option><option value="large">大 NT$60</option></select>
+            <div class="price" id="price_KB_HT_06">NT$50</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_HT_06', -1)">-</button><input type="number" id="qty_KB_HT_06" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_HT_06', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_HT_07" data-price-small="55" data-price-large="65">
+          <div class="meta"><div class="name">蘋果春芽</div><div class="desc">55 / 65</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_HT_07" onchange="recalc()"><option value="small">小 NT$55</option><option value="large">大 NT$65</option></select>
+            <div class="price" id="price_KB_HT_07">NT$55</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_HT_07', -1)">-</button><input type="number" id="qty_KB_HT_07" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_HT_07', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_HT_08" data-price-small="55" data-price-large="65">
+          <div class="meta"><div class="name">蘋果茶花烏龍</div><div class="desc">55 / 65</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_HT_08" onchange="recalc()"><option value="small">小 NT$55</option><option value="large">大 NT$65</option></select>
+            <div class="price" id="price_KB_HT_08">NT$55</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_HT_08', -1)">-</button><input type="number" id="qty_KB_HT_08" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_HT_08', 1)">+</button></div>
+          </div>
+        </div>
+
+      </details>
+
+      <!-- ========== 平飲 鮮奶茶 Fresh Milk Tea ========== -->
+      <details>
+        <summary>平飲 鮮奶茶 Fresh Milk Tea</summary>
+
+        <div class="item" data-id="KB_FM_01" data-price-small="55" data-price-large="65">
+          <div class="meta"><div class="name">熟成歐蕾</div><div class="desc">55 / 65</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_FM_01" onchange="recalc()"><option value="small">小 NT$55</option><option value="large">大 NT$65</option></select>
+            <div class="price" id="price_KB_FM_01">NT$55</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_FM_01', -1)">-</button><input type="number" id="qty_KB_FM_01" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_FM_01', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_FM_02" data-price-small="55" data-price-large="65">
+          <div class="meta"><div class="name">冷露歐蕾</div><div class="desc">55 / 65</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_FM_02" onchange="recalc()"><option value="small">小 NT$55</option><option value="large">大 NT$65</option></select>
+            <div class="price" id="price_KB_FM_02">NT$55</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_FM_02', -1)">-</button><input type="number" id="qty_KB_FM_02" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_FM_02', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_FM_03" data-price-small="59" data-price-large="69">
+          <div class="meta"><div class="name">半熟烏龍歐蕾</div><div class="desc">59 / 69</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_FM_03" onchange="recalc()"><option value="small">小 NT$59</option><option value="large">大 NT$69</option></select>
+            <div class="price" id="price_KB_FM_03">NT$59</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_FM_03', -1)">-</button><input type="number" id="qty_KB_FM_03" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_FM_03', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_FM_04" data-price-small="60" data-price-large="70">
+          <div class="meta"><div class="name">金萱歐蕾</div><div class="desc">60 / 70</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_FM_04" onchange="recalc()"><option value="small">小 NT$60</option><option value="large">大 NT$70</option></select>
+            <div class="price" id="price_KB_FM_04">NT$60</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_FM_04', -1)">-</button><input type="number" id="qty_KB_FM_04" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_FM_04', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_FM_05" data-price-small="60" data-price-large="70">
+          <div class="meta"><div class="name">白玉歐蕾</div><div class="desc">60 / 70</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_FM_05" onchange="recalc()"><option value="small">小 NT$60</option><option value="large">大 NT$70</option></select>
+            <div class="price" id="price_KB_FM_05">NT$60</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_FM_05', -1)">-</button><input type="number" id="qty_KB_FM_05" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_FM_05', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_FM_06" data-price-small="60" data-price-large="70">
+          <div class="meta"><div class="name">蘋果果歐蕾</div><div class="desc">60 / 70</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_FM_06" onchange="recalc()"><option value="small">小 NT$60</option><option value="large">大 NT$70</option></select>
+            <div class="price" id="price_KB_FM_06">NT$60</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_FM_06', -1)">-</button><input type="number" id="qty_KB_FM_06" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_FM_06', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_FM_07" data-price-small="60" data-price-large="70">
+          <div class="meta"><div class="name">墨玉貓掌歐蕾</div><div class="desc">60 / 70</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_FM_07" onchange="recalc()"><option value="small">小 NT$60</option><option value="large">大 NT$70</option></select>
+            <div class="price" id="price_KB_FM_07">NT$60</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_FM_07', -1)">-</button><input type="number" id="qty_KB_FM_07" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_FM_07', 1)">+</button></div>
+          </div>
+        </div>
+
+      </details>
+
+      <!-- ========== 平飲 厚乳 Thick Milk ========== -->
+      <details>
+        <summary>平飲 厚乳 Thick Milk</summary>
+
+        <div class="item" data-id="KB_TM_01" data-price-small="59" data-price-large="69">
+          <div class="meta"><div class="name">半熟烏龍厚乳</div><div class="desc">59 / 69</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_TM_01" onchange="recalc()"><option value="small">小 NT$59</option><option value="large">大 NT$69</option></select>
+            <div class="price" id="price_KB_TM_01">NT$59</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_TM_01', -1)">-</button><input type="number" id="qty_KB_TM_01" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_TM_01', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_TM_02" data-price-small="59" data-price-large="69">
+          <div class="meta"><div class="name">茶花烏龍厚乳</div><div class="desc">59 / 69</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_TM_02" onchange="recalc()"><option value="small">小 NT$59</option><option value="large">大 NT$69</option></select>
+            <div class="price" id="price_KB_TM_02">NT$59</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_TM_02', -1)">-</button><input type="number" id="qty_KB_TM_02" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_TM_02', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_TM_03" data-price-small="59" data-price-large="69">
+          <div class="meta"><div class="name">生茶厚乳</div><div class="desc">59 / 69</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_TM_03" onchange="recalc()"><option value="small">小 NT$59</option><option value="large">大 NT$69</option></select>
+            <div class="price" id="price_KB_TM_03">NT$59</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_TM_03', -1)">-</button><input type="number" id="qty_KB_TM_03" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_TM_03', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_TM_04" data-price-small="69" data-price-large="79">
+          <div class="meta"><div class="name">蘋果春芽厚乳</div><div class="desc">69 / 79</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_TM_04" onchange="recalc()"><option value="small">小 NT$69</option><option value="large">大 NT$79</option></select>
+            <div class="price" id="price_KB_TM_04">NT$69</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_TM_04', -1)">-</button><input type="number" id="qty_KB_TM_04" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_TM_04', 1)">+</button></div>
+          </div>
+        </div>
+
+      </details>
+
+      <!-- ========== 平飲 冬瓜 Winter Melon ========== -->
+      <details>
+        <summary>平飲 冬瓜 Winter Melon</summary>
+
+        <div class="item" data-id="KB_WM_01" data-price-small="40" data-price-large="45">
+          <div class="meta"><div class="name">熟成冷露</div><div class="desc">40 / 45</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_WM_01" onchange="recalc()"><option value="small">小 NT$40</option><option value="large">大 NT$45</option></select>
+            <div class="price" id="price_KB_WM_01">NT$40</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_WM_01', -1)">-</button><input type="number" id="qty_KB_WM_01" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_WM_01', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_WM_02" data-price-small="40" data-price-large="45">
+          <div class="meta"><div class="name">春芽冷露</div><div class="desc">40 / 45</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_WM_02" onchange="recalc()"><option value="small">小 NT$40</option><option value="large">大 NT$45</option></select>
+            <div class="price" id="price_KB_WM_02">NT$40</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_WM_02', -1)">-</button><input type="number" id="qty_KB_WM_02" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_WM_02', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_WM_03" data-price-small="45" data-price-large="50">
+          <div class="meta"><div class="name">半熟烏龍冷露</div><div class="desc">45 / 50</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_WM_03" onchange="recalc()"><option value="small">小 NT$45</option><option value="large">大 NT$50</option></select>
+            <div class="price" id="price_KB_WM_03">NT$45</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_WM_03', -1)">-</button><input type="number" id="qty_KB_WM_03" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_WM_03', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_WM_04" data-price-small="45" data-price-large="50">
+          <div class="meta"><div class="name">胭脂冷露</div><div class="desc">45 / 50</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_WM_04" onchange="recalc()"><option value="small">小 NT$45</option><option value="large">大 NT$50</option></select>
+            <div class="price" id="price_KB_WM_04">NT$45</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_WM_04', -1)">-</button><input type="number" id="qty_KB_WM_04" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_WM_04', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_WM_05" data-price-small="50" data-price-large="60">
+          <div class="meta"><div class="name">檸檬冷露</div><div class="desc">50 / 60</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_WM_05" onchange="recalc()"><option value="small">小 NT$50</option><option value="large">大 NT$60</option></select>
+            <div class="price" id="price_KB_WM_05">NT$50</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_WM_05', -1)">-</button><input type="number" id="qty_KB_WM_05" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_WM_05', 1)">+</button></div>
+          </div>
+        </div>
+
+      </details>
+
+      <!-- ========== 好眠 Relaxing Tea / 冰洪淋 Iced Blended ========== -->
+      <details>
+        <summary>好眠 / 冰洪淋</summary>
+
+        <div class="item" data-id="KB_RL_01" data-price-small="40" data-price-large="50">
+          <div class="meta"><div class="name">輕檸綠茶茶</div><div class="desc">40 / 50</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="size_KB_RL_01" onchange="recalc()"><option value="small">小 NT$40</option><option value="large">大 NT$50</option></select>
+            <div class="price" id="price_KB_RL_01">NT$40</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_RL_01', -1)">-</button><input type="number" id="qty_KB_RL_01" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_RL_01', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_IB_01" data-price="60">
+          <div class="meta"><div class="name">雪花紅茶（Iced Blended）</div><div class="desc">NT$60</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="price">NT$60</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_IB_01', -1)">-</button><input type="number" id="qty_KB_IB_01" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_IB_01', 1)">+</button></div>
+          </div>
+        </div>
+
+        <div class="item" data-id="KB_IB_02" data-price="69">
+          <div class="meta"><div class="name">雪藏奶茶（Iced Blended）</div><div class="desc">NT$69</div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="price">NT$69</div>
+            <div class="qty"><button type="button" class="ghost" onclick="changeQty('KB_IB_02', -1)">-</button><input type="number" id="qty_KB_IB_02" value="0" min="0" onchange="recalc()"><button type="button" onclick="changeQty('KB_IB_02', 1)">+</button></div>
+          </div>
+        </div>
+
+      </details>
+
+      <!-- ========== 加料與自訂（選項） ========== -->
+      <details>
+        <summary>加料與自訂（加料價格）</summary>
+        <div class="note">加料: 白玉 / 水玉 $10；茶花梅 / 檸果寒凍 $15（無糖飲料不適用）。甜度與冰量可選。</div>
+        <div style="margin-top:8px">
+          <label><input type="checkbox" id="opt_tapioca" value="白玉"> 加 白玉 (+NT$10)</label>
+          <label style="margin-left:12px"><input type="checkbox" id="opt_waterPearl" value="水玉"> 加 水玉 (+NT$10)</label>
+          <label style="margin-left:12px"><input type="checkbox" id="opt_plum" value="茶花梅"> 加 茶花梅 (+NT$15)</label>
+        </div>
+      </details>
+
+      <!-- ========== 代號輸入與送出區塊 ========== -->
+      <div class="controls-row">
+        <label for="orderCodeInput"><strong>輸入代號 (必填)</strong></label>
+        <input type="text" id="orderCodeInput" placeholder="例如 666 或 666#" autocomplete="off" />
+        <div class="note">代號會正規化為數字加 #（例如 666 → 666#）。</div>
+      </div>
+
+      <div class="summary" aria-live="polite">
+        <div>
+          <div><strong>已選餐點 :</strong> <span id="selectedCount">0</span></div>
+          <div class="note">請確認數量與代號後按「送出訂單」。</div>
+        </div>
+        <div style="text-align:right">
+          <div class="total">總金額: NT$<span id="totalPrice">0</span></div>
+          <div style="margin-top:8px">
+            <button type="button" id="submitBtn">送出訂單</button>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="orderCode" name="orderCode" value="">
+    </form>
+
+    <div id="result" style="margin-top:12px"></div>
+    <div style="margin-top:12px;font-size:13px;color:var(--muted)">備註：前端會把訂單以 form-encoded 傳送到 Apps Script Web App（避免 CORS preflight）。</div>
+  </div>
+
+  <script>
+    // ========== 設定：請改成你的 Web App URL 與預設 Sheet ID ==========
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwP8fbAVlL6gYWDB5ZrbRGmWoZqrldRxHBtGFp1TkKkwCkFYEHkRIMq-iUE_eGrXBfd/exec';
+    const DEFAULT_SHEET_ID = ''; // 可選：前端可傳入 sheetId，後端會使用或回 fallback
+
+    // ========== 共用函式：變更數量與重新計算 ==========
+    function changeQty(code, delta) {
+      const input = document.getElementById('qty_' + code);
+      if (!input) return;
+      let v = Number(input.value) + delta;
+      if (v < 0) v = 0;
+      input.value = v;
+      recalc();
+    }
+
+    function recalc() {
+      const items = document.querySelectorAll('.item');
+      let total = 0;
+      let count = 0;
+      items.forEach(item => {
+        const id = item.getAttribute('data-id');
+        const qtyInput = document.getElementById('qty_' + id);
+        if (!qtyInput) return;
+        const qty = Number(qtyInput.value) || 0;
+        if (qty <= 0) return;
+        let price = 0;
+        if (item.hasAttribute('data-price-large')) {
+          const sizeSelect = document.getElementById('size_' + id);
+          const size = sizeSelect ? sizeSelect.value : 'small';
+          price = size === 'small' ? Number(item.getAttribute('data-price-small')) : Number(item.getAttribute('data-price-large'));
+          const priceLabel = document.getElementById('price_' + id);
+          if (priceLabel) priceLabel.textContent = 'NT$' + price;
+        } else {
+          price = Number(item.getAttribute('data-price')) || 0;
+        }
+        total += price * qty;
+        count += qty;
+      });
+
+      // 加料價格（checkbox）
+      if (document.getElementById('opt_tapioca') && document.getElementById('opt_tapioca').checked) total += 10;
+      if (document.getElementById('opt_waterPearl') && document.getElementById('opt_waterPearl').checked) total += 10;
+      if (document.getElementById('opt_plum') && document.getElementById('opt_plum').checked) total += 15;
+
+      document.getElementById('totalPrice').textContent = total;
+      document.getElementById('selectedCount').textContent = count;
+    }
+
+    // ========== 初始化：綁定事件與預設價格顯示 ==========
+    document.addEventListener('DOMContentLoaded', function() {
+      // 初始化披薩/有大小的價格顯示
+      document.querySelectorAll('[data-price-large]').forEach(el => {
+        const id = el.getAttribute('data-id');
+        const priceLabel = document.getElementById('price_' + id);
+        if (priceLabel) priceLabel.textContent = 'NT$' + el.getAttribute('data-price-small');
+      });
+      recalc();
+      document.getElementById('submitBtn').addEventListener('click', submitOrder);
+    });
+
+    // ========== 代號驗證與正規化 ==========
+    function validateUserCode(code) {
+      if (!code) return { ok: false, msg: '代號為必填。' };
+      const trimmed = code.trim();
+      const reDigitsOnly = /^\d+$/;
+      const reDigitsHash = /^\d+#$/;
+      if (reDigitsHash.test(trimmed)) return { ok: true, value: trimmed };
+      if (reDigitsOnly.test(trimmed)) return { ok: true, value: trimmed + '#' };
+      return { ok: false, msg: '代號格式錯誤，請輸入數字或數字加 #，範例: 666 或 666#' };
+    }
+
+    // ========== 送出訂單（使用 URLSearchParams / form-encoded） ==========
+    function submitOrder(e) {
+      e && e.preventDefault && e.preventDefault();
+
+      const userCodeInput = document.getElementById('orderCodeInput');
+      const codeValidation = validateUserCode(userCodeInput.value);
+      if (!codeValidation.ok) {
+        showResult(codeValidation.msg, 'error');
+        userCodeInput.focus();
+        return;
+      }
+      const userCode = codeValidation.value;
+
+      // 收集所有選取的品項
+      const items = document.querySelectorAll('.item');
+      const orderItems = [];
+      let total = 0;
+      items.forEach(item => {
+        const id = item.getAttribute('data-id');
+        const qtyInput = document.getElementById('qty_' + id);
+        if (!qtyInput) return;
+        const qty = Number(qtyInput.value) || 0;
+        if (qty <= 0) return;
+        const nameEl = item.querySelector('.name');
+        const name = nameEl ? nameEl.textContent.trim() : id;
+        let size = '';
+        let price = 0;
+        if (item.hasAttribute('data-price-large')) {
+          const sizeSelect = document.getElementById('size_' + id);
+          size = sizeSelect ? sizeSelect.value : 'small';
+          price = size === 'small' ? Number(item.getAttribute('data-price-small')) : Number(item.getAttribute('data-price-large'));
+        } else {
+          price = Number(item.getAttribute('data-price')) || 0;
+        }
+        orderItems.push({ code: id, name: name, qty: qty, size: size, unit_price: price, line_total: price * qty });
+        total += price * qty;
+      });
+
+      // 加料
+      const extras = [];
+      if (document.getElementById('opt_tapioca') && document.getElementById('opt_tapioca').checked) { extras.push('白玉'); total += 10; }
+      if (document.getElementById('opt_waterPearl') && document.getElementById('opt_waterPearl').checked) { extras.push('水玉'); total += 10; }
+      if (document.getElementById('opt_plum') && document.getElementById('opt_plum').checked) { extras.push('茶花梅'); total += 15; }
+
+      if (orderItems.length === 0) {
+        showResult('請先選擇至少一項飲品或加料。', 'error');
+        return;
+      }
+
+      // 產生系統訂單代號
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const datePart = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate());
+      const timePart = pad(now.getHours()) + pad(now.getMinutes());
+      const rand = Math.floor(Math.random() * 9000) + 1000;
+      const systemOrderCode = 'KEBUKE-' + datePart + '-' + timePart + '-' + rand;
+      document.getElementById('orderCode').value = systemOrderCode;
+
+      const payload = {
+        systemOrderCode: systemOrderCode,
+        userCode: userCode,
+        createdAt: now.toISOString(),
+        items: orderItems,
+        extras: extras,
+        total: total,
+        sheetId: DEFAULT_SHEET_ID
+      };
+
+      showResult('正在送出訂單…', '');
+
+      // 使用 URLSearchParams 與 application/x-www-form-urlencoded 避免 preflight
+      const formBody = new URLSearchParams();
+      formBody.append('data', JSON.stringify(payload));
+
+      fetch(GAS_WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: formBody.toString()
+      })
+      .then(response => response.text().then(text => {
+        try { return JSON.parse(text); } catch (e) { return { status: 'error', message: '後端回傳非 JSON: ' + text }; }
+      }))
+      .then(res => {
+        if (res && res.status === 'success') {
+          showResult('訂單已送出，系統訂單代號: ' + systemOrderCode + '；代號: ' + userCode, 'success');
+          // 清空數量與代號欄位
+          orderItems.forEach(it => {
+            const q = document.getElementById('qty_' + it.code);
+            if (q) q.value = 0;
+          });
+          document.getElementById('orderCodeInput').value = '';
+          document.getElementById('opt_tapioca').checked = false;
+          document.getElementById('opt_waterPearl').checked = false;
+          document.getElementById('opt_plum').checked = false;
+          recalc();
+        } else {
+          const msg = (res && res.message) ? res.message : '送出失敗，請檢查 Apps Script 或網路連線。';
+          showResult(msg, 'error');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        showResult('送出失敗，請檢查 Apps Script 或網路連線。', 'error');
+      });
+    }
+
+    function showResult(msg, type) {
+      const el = document.getElementById('result');
+      el.textContent = msg;
+      el.className = type === 'success' ? 'success' : (type === 'error' ? 'error' : '');
+    }
+  </script>
+</body>
+</html>
